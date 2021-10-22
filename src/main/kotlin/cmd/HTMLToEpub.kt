@@ -78,7 +78,8 @@ class HTMLToEpub(
         epub.author = author
         epub.title = title
 
-        if (cover.isBlank()) defaultCover else FileInputStream(cover).use {
+        val image = if (cover.isNotBlank()) FileInputStream(cover) else defaultCover
+        image.use {
             epub.addCoverImage(it.readAllBytes(), "image/jpeg", "cover.png")
         }
 

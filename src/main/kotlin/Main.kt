@@ -1,9 +1,8 @@
+package main
+
 import cmd.HTMLToEpubException
 import org.apache.commons.cli.*
-import org.apache.commons.logging.LogFactory
-import java.util.logging.LogManager
 import kotlin.system.exitProcess
-
 
 fun main(args: Array<String>) {
     val opts = Options()
@@ -14,13 +13,14 @@ fun main(args: Array<String>) {
 
     try {
         val parsed = DefaultParser().parse(opts, args)
-        val cmd = cmd.HTMLToEpub(
+
+        cmd.HTMLToEpub(
             cover = cover.getValue(""),
             author = author.getValue("HTML to Epub"),
             title = name.getValue("HTML"),
             output = output.getValue("output.epub")
-        )
-        cmd.run(parsed.argList)
+        ).run(parsed.argList)
+
         exitProcess(0)
     } catch (e: ParseException) {
         println(e.message)
