@@ -47,7 +47,13 @@ tasks.register("fatJar", Jar::class.java) {
     }
     from(configurations.runtimeClasspath.get()
         .onEach { println("add from dependencies: ${it.name}") }
-        .map { if (it.isDirectory) it else zipTree(it) })
+        .map { if (it.isDirectory) it else zipTree(it) }
+    ) {
+        exclude("META-INF/MANIFEST.MF")
+        exclude("META-INF/*.SF")
+        exclude("META-INF/*.DSA")
+        exclude("META-INF/*.RSA")
+    }
 
     val sourcesMain = sourceSets.main.get()
     sourcesMain.allSource.forEach {
