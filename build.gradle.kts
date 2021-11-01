@@ -39,6 +39,7 @@ tasks.withType<KotlinCompile>() {
 }
 
 tasks.register("fatJar", Jar::class.java) {
+    archiveFileName.set("html-to-epub.jar")
     archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
