@@ -1,5 +1,3 @@
-package main
-
 import cmd.HTMLToEpubException
 import org.apache.commons.cli.*
 import kotlin.system.exitProcess

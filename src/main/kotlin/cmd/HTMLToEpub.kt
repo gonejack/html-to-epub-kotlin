@@ -47,10 +47,10 @@ class HTMLToEpub(
     private val client = OkHttpClient.Builder().apply {
         callTimeout(Duration.of(3, ChronoUnit.MINUTES))
         System.getenv("http_proxy")?.also { p ->
-            URI(p).also {
-                val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress(it.host, it.port))
-                println("using $proxy")
-                this.proxy(proxy)
+            URI(p).also { u ->
+                val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress(u.host, u.port))
+                println("using proxy $proxy")
+                proxy(proxy)
             }
         }
     }.build()
@@ -152,12 +152,12 @@ class HTMLToEpub(
     }
 
     private fun download(list: Set<String>): Map<String, String> {
-        val semaphore = Semaphore(3)
+        val semap = Semaphore(3)
         val saves = mutableMapOf<String, String>()
 
         runBlocking {
             list.forEach { url ->
-                semaphore.withPermit {
+                semap.withPermit {
                     launch {
                         downloadOne(url)?.also { saves[url] = it }
                     }
@@ -172,22 +172,21 @@ class HTMLToEpub(
         try {
             println("download $url with ${Thread.currentThread().name} start")
 
-            val req = Request.Builder().url(url).headers(header).build()
-            val resp = suspendCoroutine<Response> { ct ->
-                client.newCall(req).enqueue(object : Callback {
+            val reqs = Request.Builder().url(url).headers(header).build()
+            val resp = suspendCoroutine<Response> { c ->
+                client.newCall(reqs).enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
-                        ct.resumeWithException(e)
+                        c.resumeWithException(e)
                     }
-
                     override fun onResponse(call: Call, response: Response) {
-                        ct.resume(response)
+                        c.resume(response)
                     }
                 })
             }
 
             File(media).mkdirs()
-            val file = Paths.get(media, md5(url).toHex()).toFile()
 
+            val file = Paths.get(media, md5(url).toHex()).toFile()
             resp.body?.byteStream().use { i ->
                 file.outputStream().use { o ->
                     i?.copyTo(o)
@@ -199,6 +198,7 @@ class HTMLToEpub(
             return file.absolutePath
         } catch (e: Exception) {
             println("download $url failed: ${e.message}")
+
             return null
         }
     }
