@@ -170,7 +170,7 @@ class HTMLToEpub(
 
     private suspend fun downloadOne(url: String): String? {
         try {
-            println("download $url with ${Thread.currentThread().name} start")
+            println("download $url with Thread#${Thread.currentThread().name} start")
 
             val reqs = Request.Builder().url(url).headers(header).build()
             val resp = suspendCoroutine<Response> { c ->
@@ -193,7 +193,7 @@ class HTMLToEpub(
                 }
             }
 
-            println("download $url with ${Thread.currentThread().name} done")
+            println("download $url with Thread#${Thread.currentThread().name} done")
 
             return file.absolutePath
         } catch (e: Exception) {
