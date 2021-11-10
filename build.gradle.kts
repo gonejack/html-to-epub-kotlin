@@ -1,8 +1,11 @@
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.psi.addRemoveModifier.addAnnotationEntry
 
 plugins {
     kotlin("jvm") version "1.5.31"
+    id("org.graalvm.buildtools.native") version "0.9.7.1"
     application
 }
 
@@ -12,6 +15,7 @@ version = "1.0-SNAPSHOT"
 repositories {
     maven("https://maven.aliyun.com/nexus/content/groups/public/")
     mavenCentral()
+    gradlePluginPortal()
 }
 
 dependencies {
@@ -20,8 +24,7 @@ dependencies {
     implementation("net.kemitix:epub-creator:1.1.0")
     implementation("net.sf.jmimemagic:jmimemagic:0.1.5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2-native-mt")
-    implementation("com.squareup.okhttp3:okhttp:4.9.2")
-    implementation("commons-cli:commons-cli:1.4")
+    implementation("commons-cli:commons-cli:1.5.0")
     implementation("org.jsoup:jsoup:1.14.3")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.5.31")
 }
@@ -30,12 +33,22 @@ application {
     mainClass.set("MainKt")
 }
 
+graalvmNative {
+    binaries {
+        named("main") {
+            javaLauncher.set(javaToolchains.launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(17))
+            })
+        }
+    }
+}
+
 tasks.test {
     useJUnit()
 }
 
 tasks.withType<KotlinCompile>() {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "16"
 }
 
 tasks.register("fatJar", Jar::class.java) {

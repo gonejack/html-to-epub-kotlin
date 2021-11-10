@@ -7,7 +7,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import net.sf.jmimemagic.Magic
-import okhttp3.*
 import org.apache.tika.mime.MimeTypes
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -15,26 +14,36 @@ import org.jsoup.nodes.Entities
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
+import java.io.InputStream
 import java.net.InetSocketAddress
-import java.net.Proxy
+import java.net.ProxySelector
 import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.security.MessageDigest
 import java.time.Duration
-import java.time.temporal.ChronoUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.io.path.extension
 
 class HTMLToEpubException : Exception {
     constructor() : super()
     constructor(message: String) : super(message)
     constructor(message: String, cause: Throwable) : super(message, cause)
     constructor(cause: Throwable) : super(cause)
+}
+
+class First() {
+    lateinit var cover: String
+
+    constructor(args: String) : this() {
+        this.cover = args
+    }
 }
 
 class HTMLToEpub(
@@ -44,21 +53,19 @@ class HTMLToEpub(
     val output: String
 ) {
     private val defaultCover = this.javaClass.classLoader.getResourceAsStream("cover.png")
-    private val client = OkHttpClient.Builder().apply {
-        callTimeout(Duration.of(3, ChronoUnit.MINUTES))
+    private val client = HttpClient.newBuilder().apply {
+        connectTimeout(Duration.ofSeconds(10))
         System.getenv("http_proxy")?.also { p ->
             URI(p).also { u ->
-                val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress(u.host, u.port))
-                println("using proxy $proxy")
-                proxy(proxy)
+                proxy(ProxySelector.of(InetSocketAddress(u.host, u.port)))
+                println("using proxy $p")
             }
         }
     }.build()
-    private val header =
-        Headers.headersOf(
-            "user-agent",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:93.0) Gecko/20100101 Firefox/93.0"
-        )
+    private val header = listOf(
+        "user-agent",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:93.0) Gecko/20100101 Firefox/93.0"
+    )
     private val resources = mutableMapOf<String, Content>()
     private val epub = EpubBook()
     private val media = "./media"
@@ -80,7 +87,7 @@ class HTMLToEpub(
 
         val image = if (cover.isNotBlank()) FileInputStream(cover) else defaultCover
         image.use {
-            epub.addCoverImage(it.readAllBytes(), "image/jpeg", "cover.png")
+            epub.addCoverImage(it.readBytes(), "image/jpeg", "cover.png")
         }
 
         htmlList.forEach {
@@ -172,24 +179,40 @@ class HTMLToEpub(
         try {
             println("download $url with Thread#${Thread.currentThread().name} start")
 
-            val reqs = Request.Builder().url(url).headers(header).build()
-            val resp = suspendCoroutine<Response> { c ->
-                client.newCall(reqs).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        c.resumeWithException(e)
+            val req = HttpRequest.newBuilder().GET().apply {
+                URI.create(url)
+                headers(*header.toTypedArray())
+                timeout(Duration.ofSeconds(120))
+            }.build()
+
+            val resp = suspendCoroutine<HttpResponse<InputStream>> { c ->
+                val f = client.sendAsync(req, HttpResponse.BodyHandlers.ofInputStream())
+
+                f.whenCompleteAsync { resp, exp ->
+                    if (exp != null) {
+                        c.resumeWithException(exp)
+                    } else {
+                        c.resume(resp)
                     }
-                    override fun onResponse(call: Call, response: Response) {
-                        c.resume(response)
-                    }
-                })
+                };
             }
 
-            File(media).mkdirs()
+            val mime = resp.headers().firstValue("content-type")
+            val file = let {
+                if (mime.isEmpty) {
+                    val name = md5(url).toHex() + "." + Path.of(url).extension
+                    Path.of(media, name).toFile()
+                } else {
+                    val ext = MimeTypes.getDefaultMimeTypes().getRegisteredMimeType(mime.get()).extension
+                    val name = md5(url).toHex() + ext
+                    Path.of(media, mime.get(), name).toFile()
+                }
+            }
+            file.parentFile.mkdirs()
 
-            val file = Paths.get(media, md5(url).toHex()).toFile()
-            resp.body?.byteStream().use { i ->
+            resp.body().use { i ->
                 file.outputStream().use { o ->
-                    i?.copyTo(o)
+                    i.copyTo(o)
                 }
             }
 
