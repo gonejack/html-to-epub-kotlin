@@ -294,6 +294,7 @@ object MimeTypes {
     fun registerMimeType(ext: String, mimeType: String) {
         mimeTypeMapping[ext] = mimeType
     }
+
     fun getMimeType(ext: String): String {
         var mimeType = lookupMimeType(ext)
         if (mimeType == null) {
@@ -301,9 +302,12 @@ object MimeTypes {
         }
         return mimeType
     }
+
     fun lookupMimeType(ext: String): String? {
         return mimeTypeMapping[ext.lowercase(Locale.getDefault())]
     }
 
     fun MIME.ext() = mimeTypeMappginRev.get(this)
 }
+
+

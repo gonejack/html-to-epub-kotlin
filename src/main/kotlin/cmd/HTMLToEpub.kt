@@ -37,6 +37,7 @@ class HTMLToEpubException : Exception {
     constructor(message: String, cause: Throwable) : super(message, cause)
     constructor(cause: Throwable) : super(cause)
 }
+
 class HTMLToEpub(
     val cover: String,
     val author: String,
@@ -165,7 +166,7 @@ class HTMLToEpub(
     }
 
     private suspend fun downloadOne(url: String): String? {
-        try {
+        val result = runCatching<String> {
             println("download $url with Thread#${Thread.currentThread().name} start")
 
             val req = HttpRequest.newBuilder().GET().apply {
@@ -182,7 +183,7 @@ class HTMLToEpub(
                     } else {
                         c.resume(resp)
                     }
-                };
+                }
             }
 
             val mime = resp.headers().firstValue("content-type")
@@ -207,12 +208,9 @@ class HTMLToEpub(
             println("download $url with Thread#${Thread.currentThread().name} done")
 
             return f.absolutePath
-        } catch (e: Exception) {
-            e.printStackTrace()
-            println("download $url failed: ${e.message}")
-
-            return null
         }
+
+        return result.getOrNull()
     }
 }
 
