@@ -180,7 +180,7 @@ class HTMLToEpub(
             println("download $url with Thread#${Thread.currentThread().name} start")
 
             val req = HttpRequest.newBuilder().GET().apply {
-                URI.create(url)
+                uri(URI.create(url))
                 headers(*header.toTypedArray())
                 timeout(Duration.ofSeconds(120))
             }.build()

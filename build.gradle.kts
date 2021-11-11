@@ -1,5 +1,6 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
+import org.jetbrains.kotlin.gradle.targets.js.npm.includedRange
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.psi.addRemoveModifier.addAnnotationEntry
 
@@ -39,6 +40,8 @@ graalvmNative {
             javaLauncher.set(javaToolchains.launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(17))
             })
+            resources.includedPatterns.add(".*/*.png")
+            resources.includedPatterns.add(".*/*.properties")
         }
     }
 }
