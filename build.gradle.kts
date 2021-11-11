@@ -21,11 +21,11 @@ repositories {
 
 dependencies {
     implementation("org.slf4j:slf4j-simple:1.7.32")
-    implementation("org.apache.tika:tika-core:2.1.0")
     implementation("net.kemitix:epub-creator:1.1.0")
-    implementation("net.sf.jmimemagic:jmimemagic:0.1.5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2-native-mt")
     implementation("commons-cli:commons-cli:1.5.0")
+    implementation("org.jboss.logging:jboss-logging:3.4.2.Final")
+    implementation("org.jboss.logging:commons-logging-jboss-logging:1.0.0.Final")
     implementation("org.jsoup:jsoup:1.14.3")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.5.31")
 }
@@ -40,8 +40,11 @@ graalvmNative {
             javaLauncher.set(javaToolchains.launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(17))
             })
+            buildArgs.add("--allow-incomplete-classpath")
+            buildArgs.add("-H:Log=registerResource:")
             resources.includedPatterns.add(".*/*.png")
             resources.includedPatterns.add(".*/*.properties")
+            resources.includedPatterns.add(".*/*.xml")
         }
     }
 }

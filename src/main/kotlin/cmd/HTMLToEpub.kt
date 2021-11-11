@@ -1,13 +1,13 @@
 package cmd
 
+import MimeTypes.ext
+import MimeTypes.getMimeType
 import coza.opencollab.epub.creator.model.Content
 import coza.opencollab.epub.creator.model.EpubBook
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import net.sf.jmimemagic.Magic
-import org.apache.tika.mime.MimeTypes
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Entities
@@ -37,15 +37,6 @@ class HTMLToEpubException : Exception {
     constructor(message: String, cause: Throwable) : super(message, cause)
     constructor(cause: Throwable) : super(cause)
 }
-
-class First() {
-    lateinit var cover: String
-
-    constructor(args: String) : this() {
-        this.cover = args
-    }
-}
-
 class HTMLToEpub(
     val cover: String,
     val author: String,
@@ -121,12 +112,10 @@ class HTMLToEpub(
                 }
                 if (saves.containsKey(src) && !resources.containsKey(src)) {
                     val path = saves[src]!!
-                    val match = Magic.getMagicMatch(File(path), false)
-                    val extension = MimeTypes.getDefaultMimeTypes().forName(match.mimeType).extension
-
+                    val mime = getMimeType(File(path).extension)
                     FileInputStream(path).use {
-                        val name = Path.of(path).fileName.toString() + extension
-                        val content = epub.addContent(it, match.mimeType, name, false, false)
+                        val name = Path.of(path).fileName.toString() + mime.ext()
+                        val content = epub.addContent(it, mime, name, false, false)
                         resources[src] = content
                     }
                 }
@@ -187,7 +176,6 @@ class HTMLToEpub(
 
             val resp = suspendCoroutine<HttpResponse<InputStream>> { c ->
                 val f = client.sendAsync(req, HttpResponse.BodyHandlers.ofInputStream())
-
                 f.whenCompleteAsync { resp, exp ->
                     if (exp != null) {
                         c.resumeWithException(exp)
@@ -198,28 +186,29 @@ class HTMLToEpub(
             }
 
             val mime = resp.headers().firstValue("content-type")
-            val file = let {
+            val f = let {
                 if (mime.isEmpty) {
                     val name = md5(url).toHex() + "." + Path.of(url).extension
                     Path.of(media, name).toFile()
                 } else {
-                    val ext = MimeTypes.getDefaultMimeTypes().getRegisteredMimeType(mime.get()).extension
+                    val ext = getMimeType(mime.get()).ext()
                     val name = md5(url).toHex() + ext
                     Path.of(media, mime.get(), name).toFile()
                 }
             }
-            file.parentFile.mkdirs()
+            f.parentFile.mkdirs()
 
             resp.body().use { i ->
-                file.outputStream().use { o ->
+                f.outputStream().use { o ->
                     i.copyTo(o)
                 }
             }
 
             println("download $url with Thread#${Thread.currentThread().name} done")
 
-            return file.absolutePath
+            return f.absolutePath
         } catch (e: Exception) {
+            e.printStackTrace()
             println("download $url failed: ${e.message}")
 
             return null
