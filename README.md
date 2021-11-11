@@ -2,6 +2,8 @@
 
 This command line converts .html file to .epub.
 
+[![GitHub license](https://img.shields.io/github/license/gonejack/html-to-epub-kotlin.svg?color=blue)](LICENSE)
+
 ### Install
 
 ```shell
@@ -21,7 +23,7 @@ $GRAALVM_HOME/bin/gu install native-image
 ./gradlew nativeCompile
 
 # move out 
-mv /build/native/nativeCompile/html-to-epub-kotlin ./html-to-epub
+mv build/native/nativeCompile/html-to-epub-kotlin ./html-to-epub
 ```
 
 ### Usage
